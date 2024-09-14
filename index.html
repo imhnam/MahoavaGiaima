@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mã hóa & Giải mã</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h2>Mã Hóa & Giải Mã</h2>
+
+        <h3>Input</h3>
+        <input id="input_text" name="input_text" type="text" placeholder="Nhập hoặc dán" />
+
+        <h3>Or choose File</h3>
+        <input type="file" id="input_file" name="input_file" accept=".txt,.docx,.pdf" />
+
+        <h3>Phương Thức Mã Hóa</h3>
+        <select id="encryption_method">
+            <option value="caesar">Dịch Vòng (Caesar Cipher)</option>
+            <option value="substitution">Mã hóa Thay thế (Substitution Cipher)</option>
+        </select>
+
+        <h3>Khóa</h3>
+        <input id="khoa" name="khoa" type="number" min="0" max="25" placeholder="Nhập khóa (0-25)" />
+        <select id="key_options">
+            <option value="manual">Nhập khóa thủ công</option>
+            <option value="random">Sinh khóa ngẫu nhiên</option>
+        </select>
+
+        <h3>Kết Quả</h3>
+        <textarea id="output_text" name="output_text" rows="10" readonly
+            placeholder="Kết quả sẽ hiển thị ở đây"></textarea>
+
+        <div class="save-options">
+            <h3>Lưu file</h3>
+            <select id="save_options">
+                <option value="no">Không lưu</option>
+                <option value="new">Lưu file mới</option>
+                <option value="overwrite">Ghi đè file cũ</option>
+            </select>
+
+            <button type="button" onclick="saveEncrypted()">Lưu</button>
+        </div>
+
+        <div class="button-group">
+            <button type="button" onclick="encrypt()">Mã hóa</button>
+            <button type="button" onclick="decrypt()">Giải mã</button>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.8.335/pdf.min.js"></script>
+
+</body>
+
+</html>
