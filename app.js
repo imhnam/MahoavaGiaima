@@ -45,11 +45,39 @@ document.getElementById('input_file').addEventListener('change', async function 
 
 // Generate random key when the key option is changed
 document.getElementById('key_options').addEventListener('change', function () {
+    const encryptionMethod = document.getElementById('encryption_method').value;
+
     if (this.value === 'random') {
-        const randomKey = Math.floor(Math.random() * 26);
-        document.getElementById('khoa').value = randomKey;
+        if (encryptionMethod === 'affine') {
+            // Sinh khóa a ngẫu nhiên (a phải là số nguyên tố cùng nhau với 26)
+            const validAValues = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25];  // Các giá trị a hợp lệ
+            const randomA = validAValues[Math.floor(Math.random() * validAValues.length)];
+            document.getElementById('khoa_a').value = randomA;
+
+            // Sinh khóa b ngẫu nhiên
+            const randomB = Math.floor(Math.random() * 26);  // b có thể là bất kỳ giá trị nào từ 0 đến 25
+            document.getElementById('khoa_b').value = randomB;
+        } else {
+            // Sinh khóa ngẫu nhiên cho phương thức mã hóa khác (ví dụ: Caesar)
+            const randomKey = Math.floor(Math.random() * 26);
+            document.getElementById('khoa').value = randomKey;
+        }
     } else {
+        // Xóa các giá trị khóa nếu người dùng chọn nhập thủ công
         document.getElementById('khoa').value = '';
+        document.getElementById('khoa_a').value = '';
+        document.getElementById('khoa_b').value = '';
+    }
+});
+
+// Hiển thị hoặc ẩn các trường khóa a và b dựa trên phương thức mã hóa
+document.getElementById('encryption_method').addEventListener('change', function () {
+    const encryptionMethod = this.value;
+    const affineKeyInputs = document.getElementById('affine_keys');
+    if (encryptionMethod === 'affine') {
+        affineKeyInputs.style.display = 'block';  // Hiển thị trường nhập cho Affine Cipher
+    } else {
+        affineKeyInputs.style.display = 'none';   // Ẩn trường nhập cho các phương thức khác
     }
 });
 
@@ -58,54 +86,63 @@ function updateOutput(resultText) {
     document.getElementById('output_text').value = resultText;
 }
 
-// Caesar cipher function
-function caesarCipher(str, key) {
+// Function to check if two numbers are coprime
+function gcd(a, b) {
+    while (b != 0) {
+        let t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}
+
+// Function to find modular inverse
+function modInverse(a, m) {
+    for (let x = 1; x < m; x++) {
+        if ((a * x) % m === 1) {
+            return x;
+        }
+    }
+    throw new Error('Không tồn tại nghịch đảo modulo cho khóa a');
+}
+
+// Affine cipher function
+function affineCipher(str, a, b, mode) {
+    const alphabetSize = 26;
     let result = '';
-    key = key % 26; // Ensure the key wraps correctly
-    for (let i = 0; i < str.length; i++) {
-        let charCode = str.charCodeAt(i);
-        if (charCode >= 65 && charCode <= 90) {
-            // Uppercase letters
-            result += String.fromCharCode(((charCode - 65 + key + 26) % 26) + 65);
-        } else if (charCode >= 97 && charCode <= 122) {
-            // Lowercase letters
-            result += String.fromCharCode(((charCode - 97 + key + 26) % 26) + 97);
-        } else {
-            // Non-alphabet characters remain unchanged
-            result += str.charAt(i);
+
+    // Kiểm tra tính hợp lệ của a
+    if (gcd(a, alphabetSize) !== 1) {
+        throw new Error('Khóa a không hợp lệ. Nó phải nguyên tố cùng nhau với 26.');
+    }
+
+    if (mode === 'decrypt') {
+        const aInverse = modInverse(a, alphabetSize);
+        for (let i = 0; i < str.length; i++) {
+            let charCode = str.charCodeAt(i);
+            if (charCode >= 65 && charCode <= 90) {
+                // Uppercase letters
+                result += String.fromCharCode(((aInverse * (charCode - 65 - b + alphabetSize)) % alphabetSize) + 65);
+            } else if (charCode >= 97 && charCode <= 122) {
+                // Lowercase letters
+                result += String.fromCharCode(((aInverse * (charCode - 97 - b + alphabetSize)) % alphabetSize) + 97);
+            } else {
+                result += str[i]; // Non-alphabet characters remain unchanged
+            }
+        }
+    } else {
+        for (let i = 0; i < str.length; i++) {
+            let charCode = str.charCodeAt(i);
+            if (charCode >= 65 && charCode <= 90) {
+                result += String.fromCharCode(((a * (charCode - 65) + b) % alphabetSize) + 65);
+            } else if (charCode >= 97 && charCode <= 122) {
+                result += String.fromCharCode(((a * (charCode - 97) + b) % alphabetSize) + 97);
+            } else {
+                result += str[i]; // Non-alphabet characters remain unchanged
+            }
         }
     }
     return result;
-}
-
-// Substitution cipher function (handles both encryption and decryption)
-function substitutionCipher(str, key, mode) {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-    let shiftedAlphabet = alphabet.split('').map((char, index) => {
-        return alphabet[(index + key) % 26]; // Shift by key positions
-    }).join('');
-
-    if (mode === 'decrypt') {
-        // Reverse the substitution for decryption
-        return str.split('').map(char => {
-            let lowerChar = char.toLowerCase();
-            let index = shiftedAlphabet.indexOf(lowerChar);
-            if (index === -1) {
-                return char; // Non-alphabet characters remain unchanged
-            }
-            return alphabet[index];
-        }).join('');
-    } else {
-        // Encrypt by shifting according to the shifted alphabet
-        return str.split('').map(char => {
-            let lowerChar = char.toLowerCase();
-            let index = alphabet.indexOf(lowerChar);
-            if (index === -1) {
-                return char; // Non-alphabet characters remain unchanged
-            }
-            return shiftedAlphabet[index];
-        }).join('');
-    }
 }
 
 // Encrypt function
@@ -113,15 +150,24 @@ function encrypt() {
     let inputText = document.getElementById('input_text').value;
     let key = parseInt(document.getElementById('khoa').value);
     let encryptionMethod = document.getElementById('encryption_method').value;
-
-    // Validate key
-    if (isNaN(key) || key < 0 || key > 25) {
-        alert('Khóa phải nằm trong khoảng từ 0 đến 25');
-        return;
-    }
-
     let encryptedText;
-    if (encryptionMethod === 'caesar') {
+
+    if (encryptionMethod === 'affine') {
+        let a = parseInt(document.getElementById('khoa_a').value);
+        let b = parseInt(document.getElementById('khoa_b').value);
+
+        // Kiểm tra khóa a và b hợp lệ
+        if (isNaN(a) || isNaN(b) || a < 1 || b < 0 || b > 25) {
+            alert('Khóa a và b không hợp lệ. a phải trong khoảng 1-25 và b phải trong khoảng 0-25');
+            return;
+        }
+        try {
+            encryptedText = affineCipher(inputText, a, b, 'encrypt');
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
+    } else if (encryptionMethod === 'caesar') {
         encryptedText = caesarCipher(inputText, key);
     } else if (encryptionMethod === 'substitution') {
         encryptedText = substitutionCipher(inputText, key, 'encrypt');
@@ -131,20 +177,29 @@ function encrypt() {
     updateOutput(encryptedText);
 }
 
-// Decrypt function (fixes decryption issues)
+// Decrypt function
 function decrypt() {
     let encryptedText = document.getElementById('input_text').value;
     let key = parseInt(document.getElementById('khoa').value);
     let encryptionMethod = document.getElementById('encryption_method').value;
-
-    // Validate key
-    if (isNaN(key) || key < 0 || key > 25) {
-        alert('Khóa phải nằm trong khoảng từ 0 đến 25');
-        return;
-    }
-
     let decryptedText;
-    if (encryptionMethod === 'caesar') {
+
+    if (encryptionMethod === 'affine') {
+        let a = parseInt(document.getElementById('khoa_a').value);
+        let b = parseInt(document.getElementById('khoa_b').value);
+
+        // Kiểm tra khóa a và b hợp lệ
+        if (isNaN(a) || isNaN(b) || a < 1 || b < 0 || b > 25) {
+            alert('Khóa a và b không hợp lệ. a phải trong khoảng 1-25 và b phải trong khoảng 0-25');
+            return;
+        }
+        try {
+            decryptedText = affineCipher(encryptedText, a, b, 'decrypt');
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
+    } else if (encryptionMethod === 'caesar') {
         decryptedText = caesarCipher(encryptedText, -key);  // Caesar cipher decryption
     } else if (encryptionMethod === 'substitution') {
         decryptedText = substitutionCipher(encryptedText, key, 'decrypt');  // Substitution cipher decryption
