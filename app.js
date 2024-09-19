@@ -49,35 +49,41 @@ document.getElementById('key_options').addEventListener('change', function () {
 
     if (this.value === 'random') {
         if (encryptionMethod === 'affine') {
-            // Sinh khóa a ngẫu nhiên (a phải là số nguyên tố cùng nhau với 26)
             const validAValues = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25];  // Các giá trị a hợp lệ
             const randomA = validAValues[Math.floor(Math.random() * validAValues.length)];
             document.getElementById('khoa_a').value = randomA;
 
-            // Sinh khóa b ngẫu nhiên
             const randomB = Math.floor(Math.random() * 26);  // b có thể là bất kỳ giá trị nào từ 0 đến 25
             document.getElementById('khoa_b').value = randomB;
         } else {
-            // Sinh khóa ngẫu nhiên cho phương thức mã hóa khác (ví dụ: Caesar)
             const randomKey = Math.floor(Math.random() * 26);
             document.getElementById('khoa').value = randomKey;
         }
     } else {
-        // Xóa các giá trị khóa nếu người dùng chọn nhập thủ công
         document.getElementById('khoa').value = '';
         document.getElementById('khoa_a').value = '';
         document.getElementById('khoa_b').value = '';
     }
 });
 
-// Hiển thị hoặc ẩn các trường khóa a và b dựa trên phương thức mã hóa
+// Hiển thị hoặc ẩn các trường nhập khóa dựa trên phương thức mã hóa
 document.getElementById('encryption_method').addEventListener('change', function () {
     const encryptionMethod = this.value;
+    const keyInput = document.getElementById('khoa');
     const affineKeyInputs = document.getElementById('affine_keys');
-    if (encryptionMethod === 'affine') {
+
+    if (encryptionMethod === 'vigenere') {
+        keyInput.type = 'text';  // Cho phép nhập chuỗi ký tự
+        keyInput.placeholder = 'Nhập khóa (chuỗi ký tự)';
+        affineKeyInputs.style.display = 'none'; // Ẩn trường cho Affine Cipher
+    } else if (encryptionMethod === 'affine') {
         affineKeyInputs.style.display = 'block';  // Hiển thị trường nhập cho Affine Cipher
     } else {
-        affineKeyInputs.style.display = 'none';   // Ẩn trường nhập cho các phương thức khác
+        keyInput.type = 'number';  // Cho phép nhập số cho các cipher khác
+        keyInput.placeholder = 'Nhập khóa (0-25)';
+        keyInput.min = '0';
+        keyInput.max = '25';
+        affineKeyInputs.style.display = 'none'; // Ẩn trường cho Affine Cipher
     }
 });
 
@@ -106,40 +112,45 @@ function modInverse(a, m) {
     throw new Error('Không tồn tại nghịch đảo modulo cho khóa a');
 }
 
-// Affine cipher function
-function affineCipher(str, a, b, mode) {
-    const alphabetSize = 26;
+// Vigenère Cipher Encryption Function
+function vigenereCipherEncrypt(text, key) {
     let result = '';
+    key = key.toLowerCase();
+    let keyIndex = 0;
 
-    // Kiểm tra tính hợp lệ của a
-    if (gcd(a, alphabetSize) !== 1) {
-        throw new Error('Khóa a không hợp lệ. Nó phải nguyên tố cùng nhau với 26.');
-    }
-
-    if (mode === 'decrypt') {
-        const aInverse = modInverse(a, alphabetSize);
-        for (let i = 0; i < str.length; i++) {
-            let charCode = str.charCodeAt(i);
-            if (charCode >= 65 && charCode <= 90) {
-                // Uppercase letters
-                result += String.fromCharCode(((aInverse * (charCode - 65 - b + alphabetSize)) % alphabetSize) + 65);
-            } else if (charCode >= 97 && charCode <= 122) {
-                // Lowercase letters
-                result += String.fromCharCode(((aInverse * (charCode - 97 - b + alphabetSize)) % alphabetSize) + 97);
-            } else {
-                result += str[i]; // Non-alphabet characters remain unchanged
-            }
+    for (let i = 0; i < text.length; i++) {
+        let charCode = text.charCodeAt(i);
+        
+        if (charCode >= 65 && charCode <= 90) { // Uppercase
+            result += String.fromCharCode(((charCode - 65 + (key.charCodeAt(keyIndex % key.length) - 97)) % 26) + 65);
+            keyIndex++;
+        } else if (charCode >= 97 && charCode <= 122) { // Lowercase
+            result += String.fromCharCode(((charCode - 97 + (key.charCodeAt(keyIndex % key.length) - 97)) % 26) + 97);
+            keyIndex++;
+        } else {
+            result += text[i]; // Non-alphabetic characters
         }
-    } else {
-        for (let i = 0; i < str.length; i++) {
-            let charCode = str.charCodeAt(i);
-            if (charCode >= 65 && charCode <= 90) {
-                result += String.fromCharCode(((a * (charCode - 65) + b) % alphabetSize) + 65);
-            } else if (charCode >= 97 && charCode <= 122) {
-                result += String.fromCharCode(((a * (charCode - 97) + b) % alphabetSize) + 97);
-            } else {
-                result += str[i]; // Non-alphabet characters remain unchanged
-            }
+    }
+    return result;
+}
+
+// Vigenère Cipher Decryption Function
+function vigenereCipherDecrypt(text, key) {
+    let result = '';
+    key = key.toLowerCase();
+    let keyIndex = 0;
+
+    for (let i = 0; i < text.length; i++) {
+        let charCode = text.charCodeAt(i);
+
+        if (charCode >= 65 && charCode <= 90) { // Uppercase
+            result += String.fromCharCode(((charCode - 65 - (key.charCodeAt(keyIndex % key.length) - 97) + 26) % 26) + 65);
+            keyIndex++;
+        } else if (charCode >= 97 && charCode <= 122) { // Lowercase
+            result += String.fromCharCode(((charCode - 97 - (key.charCodeAt(keyIndex % key.length) - 97) + 26) % 26) + 97);
+            keyIndex++;
+        } else {
+            result += text[i]; // Non-alphabetic characters
         }
     }
     return result;
@@ -148,64 +159,78 @@ function affineCipher(str, a, b, mode) {
 // Encrypt function
 function encrypt() {
     let inputText = document.getElementById('input_text').value;
-    let key = parseInt(document.getElementById('khoa').value);
+    let key = document.getElementById('khoa').value;
     let encryptionMethod = document.getElementById('encryption_method').value;
     let encryptedText;
 
-    if (encryptionMethod === 'affine') {
+    if (encryptionMethod === 'vigenere') {
+        if (!key || key.length === 0) {
+            alert('Vui lòng nhập một chuỗi khóa hợp lệ.');
+            return;
+        }
+        encryptedText = vigenereCipherEncrypt(inputText, key);
+    } else if (encryptionMethod === 'affine') {
         let a = parseInt(document.getElementById('khoa_a').value);
         let b = parseInt(document.getElementById('khoa_b').value);
 
-        // Kiểm tra khóa a và b hợp lệ
         if (isNaN(a) || isNaN(b) || a < 1 || b < 0 || b > 25) {
-            alert('Khóa a và b không hợp lệ. a phải trong khoảng 1-25 và b phải trong khoảng 0-25');
+            alert('Khóa a và b không hợp lệ.');
             return;
         }
-        try {
-            encryptedText = affineCipher(inputText, a, b, 'encrypt');
-        } catch (error) {
-            alert(error.message);
+        encryptedText = affineCipher(inputText, a, b, 'encrypt');
+    } else {
+        key = parseInt(key);  // Chuyển đổi khóa thành số
+        if (isNaN(key) || key < 0 || key > 25) {
+            alert('Vui lòng nhập một khóa hợp lệ (0-25).');
             return;
         }
-    } else if (encryptionMethod === 'caesar') {
-        encryptedText = caesarCipher(inputText, key);
-    } else if (encryptionMethod === 'substitution') {
-        encryptedText = substitutionCipher(inputText, key, 'encrypt');
+        if (encryptionMethod === 'caesar') {
+            encryptedText = caesarCipher(inputText, key);
+        } else if (encryptionMethod === 'substitution') {
+            encryptedText = substitutionCipher(inputText, key, 'encrypt');
+        }
     }
 
-    currentResult = encryptedText; // Set the result to be the encrypted text
+    currentResult = encryptedText;
     updateOutput(encryptedText);
 }
 
 // Decrypt function
 function decrypt() {
     let encryptedText = document.getElementById('input_text').value;
-    let key = parseInt(document.getElementById('khoa').value);
+    let key = document.getElementById('khoa').value;
     let encryptionMethod = document.getElementById('encryption_method').value;
     let decryptedText;
 
-    if (encryptionMethod === 'affine') {
+    if (encryptionMethod === 'vigenere') {
+        if (!key || key.length === 0) {
+            alert('Vui lòng nhập một chuỗi khóa hợp lệ.');
+            return;
+        }
+        decryptedText = vigenereCipherDecrypt(encryptedText, key);
+    } else if (encryptionMethod === 'affine') {
         let a = parseInt(document.getElementById('khoa_a').value);
         let b = parseInt(document.getElementById('khoa_b').value);
 
-        // Kiểm tra khóa a và b hợp lệ
         if (isNaN(a) || isNaN(b) || a < 1 || b < 0 || b > 25) {
-            alert('Khóa a và b không hợp lệ. a phải trong khoảng 1-25 và b phải trong khoảng 0-25');
+            alert('Khóa a và b không hợp lệ.');
             return;
         }
-        try {
-            decryptedText = affineCipher(encryptedText, a, b, 'decrypt');
-        } catch (error) {
-            alert(error.message);
+        decryptedText = affineCipher(encryptedText, a, b, 'decrypt');
+    } else {
+        key = parseInt(key);  // Chuyển đổi khóa thành số
+        if (isNaN(key) || key < 0 || key > 25) {
+            alert('Vui lòng nhập một khóa hợp lệ (0-25).');
             return;
         }
-    } else if (encryptionMethod === 'caesar') {
-        decryptedText = caesarCipher(encryptedText, -key);  // Caesar cipher decryption
-    } else if (encryptionMethod === 'substitution') {
-        decryptedText = substitutionCipher(encryptedText, key, 'decrypt');  // Substitution cipher decryption
+        if (encryptionMethod === 'caesar') {
+            decryptedText = caesarCipher(encryptedText, -key);
+        } else if (encryptionMethod === 'substitution') {
+            decryptedText = substitutionCipher(encryptedText, key, 'decrypt');
+        }
     }
 
-    currentResult = decryptedText; // Set the result to be the decrypted text
+    currentResult = decryptedText;
     updateOutput(decryptedText);
 }
 
@@ -233,10 +258,9 @@ async function saveEncrypted() {
             await writableStream.write(currentResult);
             await writableStream.close();
 
-            previousFileName = fileHandle.name; // Update the previous file name
+            previousFileName = fileHandle.name;
             showNotification('File đã được lưu thành công!');
         } else {
-            // Fallback for browsers that don't support the File System API
             const blob = new Blob([currentResult], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
